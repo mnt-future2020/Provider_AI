@@ -22,6 +22,7 @@ const AVAILABLE_TOOLKITS = [
   { id: 'notion', name: 'Notion', description: 'Manage pages and databases' },
   { id: 'googlecalendar', name: 'Google Calendar', description: 'Manage events and schedules' },
   { id: 'googledocs', name: 'Google Docs', description: 'Create and edit documents' },
+  { id: 'whatsapp', name: 'WhatsApp', description: 'Send messages and manage chats' },
 ];
 
 export default function ConnectionsPage() {
