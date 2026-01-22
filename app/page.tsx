@@ -17,6 +17,44 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Helper function to parse and clean tool calls
+  const parseToolCall = (toolName: string) => {
+    // Remove COMPOSIO_ prefix and convert to readable format
+    const cleaned = toolName
+      .replace(/^COMPOSIO_/, '')
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    return cleaned;
+  };
+
+  // Helper to extract task steps from messages
+  const extractTaskSteps = (message: any) => {
+    const steps: { name: string; status: 'completed' | 'in-progress' | 'pending'; args?: any }[] = [];
+    
+    // Check parts for tool calls (this is what Composio uses)
+    if (message.parts && Array.isArray(message.parts)) {
+      message.parts.forEach((part: any) => {
+        // Check if this is a tool call (type starts with "tool-")
+        if (part.type && part.type.startsWith('tool-') && part.type !== 'tool-result') {
+          // Extract tool name from type (e.g., "tool-COMPOSIO_SEARCH_TOOLS" -> "COMPOSIO_SEARCH_TOOLS")
+          const toolName = part.type.replace('tool-', '');
+          const status = part.state === 'output-available' ? 'completed' : 'in-progress';
+          
+          steps.push({
+            name: parseToolCall(toolName),
+            status: status,
+            args: part.input
+          });
+        }
+      });
+    }
+    
+    return steps;
+  };
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -84,6 +122,11 @@ export default function Chat() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <header style={{ 
         borderBottom: '1px solid #e5e5e5',
         background: '#ffffff',
@@ -150,29 +193,116 @@ export default function Chat() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {messages.map((message) => (
-                <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {message.role === 'user' ? 'You' : 'iSuiteAI'}
-                  </div>
-                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: '#1a1a1a' }}>
-                    {message.parts.map((part, index) => {
-                      if (part.type === 'text') {
-                        return <div key={index} style={{ whiteSpace: 'pre-wrap' }}>{part.text}</div>;
-                      }
-                      if (part.type.startsWith('tool-')) {
-                        return (
-                          <div key={index} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: '#f5f5f5', color: '#666', padding: '6px 12px', borderRadius: '6px', marginTop: '8px', border: '1px solid #e5e5e5' }}>
-                            <span>⚙</span>
-                            <span>{part.type.replace('tool-', '')}</span>
+              {messages.map((message) => {
+                const taskSteps = extractTaskSteps(message);
+                const hasTools = taskSteps.length > 0;
+                
+                // Get text content
+                const textContent = message.content || 
+                  (message.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '');
+                
+                return (
+                  <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {message.role === 'user' ? 'YOU' : 'ISUITEAI'}
+                    </div>
+                    
+                    {/* Show task progress FIRST if tools were used */}
+                    {message.role === 'assistant' && hasTools && (
+                      <div style={{ 
+                        marginTop: '4px',
+                        marginBottom: '12px',
+                        padding: '16px',
+                        background: '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          marginBottom: '12px'
+                        }}>
+                          <div style={{ 
+                            fontSize: '13px', 
+                            fontWeight: '600', 
+                            color: '#374151',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <span>📋</span>
+                            Task Progress
                           </div>
-                        );
-                      }
-                      return null;
-                    })}
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {taskSteps.filter(s => s.status === 'completed').length}/{taskSteps.length}
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {taskSteps.map((step, idx) => (
+                            <div 
+                              key={idx}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '10px',
+                                fontSize: '13px',
+                                color: '#374151'
+                              }}
+                            >
+                              {step.status === 'completed' ? (
+                                <div style={{ 
+                                  width: '18px', 
+                                  height: '18px', 
+                                  borderRadius: '50%', 
+                                  background: '#10b981',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ffffff',
+                                  fontSize: '10px',
+                                  flexShrink: 0
+                                }}>✓</div>
+                              ) : step.status === 'in-progress' ? (
+                                <div style={{ 
+                                  width: '18px', 
+                                  height: '18px', 
+                                  borderRadius: '50%', 
+                                  border: '2px solid #3b82f6',
+                                  borderTopColor: 'transparent',
+                                  animation: 'spin 1s linear infinite',
+                                  flexShrink: 0
+                                }}></div>
+                              ) : (
+                                <div style={{ 
+                                  width: '18px', 
+                                  height: '18px', 
+                                  borderRadius: '50%', 
+                                  border: '2px solid #d1d5db',
+                                  flexShrink: 0
+                                }}></div>
+                              )}
+                              <span style={{ 
+                                color: step.status === 'completed' ? '#374151' : '#6b7280'
+                              }}>
+                                {step.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* User message or AI text response */}
+                    {textContent && (
+                      <div style={{ fontSize: '15px', lineHeight: '1.6', color: '#1a1a1a', whiteSpace: 'pre-wrap' }}>
+                        {textContent}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           )}
