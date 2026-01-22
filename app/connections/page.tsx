@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface Connection {
   id: string;
@@ -24,14 +25,19 @@ const AVAILABLE_TOOLKITS = [
 ];
 
 export default function ConnectionsPage() {
+  const { data: session, status } = useSession();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    fetchConnections();
-  }, []);
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated') {
+      fetchConnections();
+    }
+  }, [status, router]);
 
   const fetchConnections = async () => {
     try {
@@ -41,7 +47,7 @@ export default function ConnectionsPage() {
         return;
       }
       const data = await response.json();
-      console.log('Connections data:', data.connections); // Debug log
+      console.log('Connections data:', data.connections);
       setConnections(data.connections || []);
     } catch (error) {
       console.error('Error fetching connections:', error);
@@ -60,26 +66,22 @@ export default function ConnectionsPage() {
       });
 
       const data = await response.json();
-      console.log('Connect response:', data); // Debug log
+      console.log('Connect response:', data);
 
       if (data.success && data.redirectUrl) {
-        // Open in new window
         const popup = window.open(data.redirectUrl, '_blank', 'width=600,height=700');
         
         if (!popup) {
           alert('Please allow popups for this site to connect apps');
         } else {
-          // Poll for connection status multiple times
           const pollInterval = setInterval(() => {
             fetchConnections();
           }, 2000);
 
-          // Stop polling after 30 seconds
           setTimeout(() => {
             clearInterval(pollInterval);
           }, 30000);
 
-          // Also fetch immediately after 3 seconds
           setTimeout(() => {
             fetchConnections();
           }, 3000);
@@ -117,14 +119,24 @@ export default function ConnectionsPage() {
       const connToolkit = conn.toolkit?.slug || conn.integrationId || '';
       const isMatch = connToolkit.toLowerCase() === toolkitId.toLowerCase();
       const isActive = conn.status === 'ACTIVE';
-      console.log(`Checking ${toolkitId}: toolkit=${connToolkit}, status=${conn.status}, match=${isMatch}, active=${isActive}`);
       return isMatch && isActive;
     });
   };
 
+  if (status === 'loading' || loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+        <div style={{ fontSize: '14px', color: '#666' }}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff' }}>
-      {/* Header */}
       <header style={{ borderBottom: '1px solid #e5e5e5', background: '#ffffff' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#1a1a1a', margin: 0, letterSpacing: '-0.01em' }}>
@@ -148,7 +160,6 @@ export default function ConnectionsPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#1a1a1a', marginBottom: '8px', letterSpacing: '-0.01em' }}>
@@ -159,86 +170,80 @@ export default function ConnectionsPage() {
           </p>
         </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            Loading connections...
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {AVAILABLE_TOOLKITS.map((toolkit) => {
-              const connected = isConnected(toolkit.id);
-              const connection = connections.find(c => {
-                const connToolkit = c.toolkit?.slug || c.integrationId || '';
-                return connToolkit.toLowerCase() === toolkit.id.toLowerCase();
-              });
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {AVAILABLE_TOOLKITS.map((toolkit) => {
+            const connected = isConnected(toolkit.id);
+            const connection = connections.find(c => {
+              const connToolkit = c.toolkit?.slug || c.integrationId || '';
+              return connToolkit.toLowerCase() === toolkit.id.toLowerCase();
+            });
 
-              return (
-                <div
-                  key={toolkit.id}
-                  style={{
-                    padding: '20px',
-                    background: '#ffffff',
-                    border: '1px solid #e5e5e5',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
-                      {toolkit.name}
-                    </h3>
-                    <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
-                      {toolkit.description}
-                    </p>
-                    {connected && (
-                      <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a' }}>
-                        <div style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></div>
-                        Connected
-                      </div>
-                    )}
-                  </div>
-
-                  {connected ? (
-                    <button
-                      onClick={() => connection && handleDisconnect(connection.id)}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#ffffff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Disconnect
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleConnect(toolkit.id)}
-                      disabled={connecting === toolkit.id}
-                      style={{
-                        padding: '8px 16px',
-                        background: connecting === toolkit.id ? '#f5f5f5' : '#1a1a1a',
-                        color: connecting === toolkit.id ? '#999' : '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        cursor: connecting === toolkit.id ? 'not-allowed' : 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      {connecting === toolkit.id ? 'Connecting...' : 'Connect'}
-                    </button>
+            return (
+              <div
+                key={toolkit.id}
+                style={{
+                  padding: '20px',
+                  background: '#ffffff',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
+                    {toolkit.name}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                    {toolkit.description}
+                  </p>
+                  {connected && (
+                    <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a' }}>
+                      <div style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></div>
+                      Connected
+                    </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {connected ? (
+                  <button
+                    onClick={() => connection && handleDisconnect(connection.id)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#ffffff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      color: '#dc2626',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleConnect(toolkit.id)}
+                    disabled={connecting === toolkit.id}
+                    style={{
+                      padding: '8px 16px',
+                      background: connecting === toolkit.id ? '#f5f5f5' : '#1a1a1a',
+                      color: connecting === toolkit.id ? '#999' : '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      cursor: connecting === toolkit.id ? 'not-allowed' : 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {connecting === toolkit.id ? 'Connecting...' : 'Connect'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </main>
     </div>
   );

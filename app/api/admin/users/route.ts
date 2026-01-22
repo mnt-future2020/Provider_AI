@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import prisma from '@/prisma/prisma';
 
 export async function GET() {
   try {
@@ -40,6 +41,9 @@ export async function GET() {
       if (!userMap.has(userId)) {
         userMap.set(userId, {
           userId: userId,
+          name: null,
+          email: null,
+          image: null,
           connections: [],
           totalConnections: 0,
         });
@@ -54,6 +58,35 @@ export async function GET() {
       });
       userData.totalConnections++;
     });
+
+    // Fetch user details from database
+    const userIds = Array.from(userMap.keys()).filter(id => id !== 'unknown');
+    
+    if (userIds.length > 0) {
+      const dbUsers = await prisma.user.findMany({
+        where: {
+          id: {
+            in: userIds,
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      });
+
+      // Merge database user info with connection data
+      dbUsers.forEach((dbUser) => {
+        if (userMap.has(dbUser.id)) {
+          const userData = userMap.get(dbUser.id);
+          userData.name = dbUser.name;
+          userData.email = dbUser.email;
+          userData.image = dbUser.image;
+        }
+      });
+    }
 
     // Convert map to array
     const users = Array.from(userMap.values());

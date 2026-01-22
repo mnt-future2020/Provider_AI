@@ -1,15 +1,10 @@
+// This file is no longer needed - NextAuth handles logout via signOut()
+// Keeping for backwards compatibility
 import { NextResponse } from 'next/server';
-import { deleteSession } from '@/lib/auth';
 
 export async function POST() {
-  try {
-    await deleteSession();
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Failed to logout' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: 'Please use signOut() from next-auth/react for logout' },
+    { status: 410 }
+  );
 }

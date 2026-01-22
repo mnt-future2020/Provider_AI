@@ -3,55 +3,28 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState, useRef, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
 export default function Chat() {
-  const { messages, sendMessage, status, error } = useChat({
+  const { data: session, status } = useSession();
+  const { messages, sendMessage, status: chatStatus, error } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
   });
   const [input, setInput] = useState('');
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      const data = await response.json();
-      
-      if (data.user) {
-        setUser(data.user);
-      } else {
-        router.push('/login');
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
+    if (status === 'unauthenticated') {
       router.push('/login');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [status, router]);
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    await signOut({ callbackUrl: '/login' });
   };
 
   const scrollToBottom = () => {
@@ -62,12 +35,16 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
         <div style={{ fontSize: '14px', color: '#666' }}>Loading...</div>
       </div>
     );
+  }
+
+  if (!session) {
+    return null;
   }
 
   if (error) {
@@ -132,7 +109,7 @@ export default function Chat() {
             iSuiteAI
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {status === 'streaming' && (
+            {chatStatus === 'streaming' && (
               <div style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '6px', height: '6px', background: '#666', borderRadius: '50%' }}></div>
                 Processing
@@ -204,10 +181,10 @@ export default function Chat() {
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#ffffff', borderTop: '1px solid #e5e5e5' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 24px' }}>
-          <form onSubmit={(e) => { e.preventDefault(); if (input.trim() && status === 'ready') { sendMessage({ text: input }); setInput(''); } }} style={{ display: 'flex', gap: '12px' }}>
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a command..." disabled={status !== 'ready'} style={{ flex: 1, padding: '14px 16px', fontSize: '15px', border: '1px solid #e5e5e5', borderRadius: '8px', outline: 'none', background: '#ffffff', color: '#1a1a1a' }} />
-            <button type="submit" disabled={status !== 'ready' || !input.trim()} style={{ padding: '14px 24px', background: status !== 'ready' || !input.trim() ? '#f5f5f5' : '#1a1a1a', color: status !== 'ready' || !input.trim() ? '#999' : '#ffffff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: status !== 'ready' || !input.trim() ? 'not-allowed' : 'pointer' }}>
-              {status === 'streaming' ? 'Sending...' : 'Send'}
+          <form onSubmit={(e) => { e.preventDefault(); if (input.trim() && chatStatus === 'ready') { sendMessage({ text: input }); setInput(''); } }} style={{ display: 'flex', gap: '12px' }}>
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a command..." disabled={chatStatus !== 'ready'} style={{ flex: 1, padding: '14px 16px', fontSize: '15px', border: '1px solid #e5e5e5', borderRadius: '8px', outline: 'none', background: '#ffffff', color: '#1a1a1a' }} />
+            <button type="submit" disabled={chatStatus !== 'ready' || !input.trim()} style={{ padding: '14px 24px', background: chatStatus !== 'ready' || !input.trim() ? '#f5f5f5' : '#1a1a1a', color: chatStatus !== 'ready' || !input.trim() ? '#999' : '#ffffff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: chatStatus !== 'ready' || !input.trim() ? 'not-allowed' : 'pointer' }}>
+              {chatStatus === 'streaming' ? 'Sending...' : 'Send'}
             </button>
           </form>
         </div>

@@ -12,6 +12,9 @@ interface UserConnection {
 
 interface User {
   userId: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
   connections: UserConnection[];
   totalConnections: number;
 }
@@ -52,7 +55,10 @@ export default function AdminPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm(`Are you sure you want to delete user "${userId}" and all their connections? This action cannot be undone.`)) {
+    const user = users.find(u => u.userId === userId);
+    const userName = user?.name || user?.email || userId;
+    
+    if (!confirm(`Are you sure you want to delete user "${userName}" and all their connections? This action cannot be undone.`)) {
       return;
     }
 
@@ -155,13 +161,31 @@ export default function AdminPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
-                      {user.userId}
-                    </h3>
-                    <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
-                      {user.totalConnections} connection{user.totalConnections !== 1 ? 's' : ''}
-                    </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {user.image && (
+                      <img
+                        src={user.image}
+                        alt={user.name || 'User'}
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #e5e5e5',
+                        }}
+                      />
+                    )}
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
+                        {user.name || 'Unknown User'}
+                      </h3>
+                      <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                        {user.email || user.userId}
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#999', margin: '2px 0 0 0' }}>
+                        {user.totalConnections} connection{user.totalConnections !== 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDeleteUser(user.userId)}
