@@ -20,6 +20,7 @@ const AVAILABLE_TOOLKITS = [
   { id: 'slack', name: 'Slack', description: 'Send messages and manage channels' },
   { id: 'notion', name: 'Notion', description: 'Manage pages and databases' },
   { id: 'googlecalendar', name: 'Google Calendar', description: 'Manage events and schedules' },
+  { id: 'googledocs', name: 'Google Docs', description: 'Create and edit documents' },
 ];
 
 export default function ConnectionsPage() {
