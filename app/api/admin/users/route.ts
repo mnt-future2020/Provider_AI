@@ -78,7 +78,7 @@ export async function GET() {
       });
 
       // Merge database user info with connection data
-      dbUsers.forEach((dbUser) => {
+      dbUsers.forEach((dbUser: { id: string; name: string | null; email: string | null; image: string | null }) => {
         if (userMap.has(dbUser.id)) {
           const userData = userMap.get(dbUser.id);
           userData.name = dbUser.name;
