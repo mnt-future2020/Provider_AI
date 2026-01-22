@@ -201,21 +201,43 @@ export default function Chat() {
                 const textContent = message.content || 
                   (message.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '');
                 
+                const isUser = message.role === 'user';
+                
                 return (
-                  <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {message.role === 'user' ? 'YOU' : 'ISUITEAI'}
+                  <div 
+                    key={message.id} 
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px',
+                      alignItems: isUser ? 'flex-start' : 'flex-end',
+                      maxWidth: '85%',
+                      alignSelf: isUser ? 'flex-start' : 'flex-end'
+                    }}
+                  >
+                    <div style={{ 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      color: isUser ? '#2563eb' : '#7c3aed', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.05em',
+                      paddingLeft: isUser ? '4px' : '0',
+                      paddingRight: isUser ? '0' : '4px'
+                    }}>
+                      {isUser ? 'YOU' : 'ISUITEAI'}
                     </div>
                     
                     {/* Show task progress FIRST if tools were used */}
-                    {message.role === 'assistant' && hasTools && (
+                    {!isUser && hasTools && (
                       <div style={{ 
+                        width: '100%',
                         marginTop: '4px',
-                        marginBottom: '12px',
+                        marginBottom: '8px',
                         padding: '16px',
-                        background: '#f9fafb',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px'
+                        background: '#faf5ff',
+                        border: '1px solid #e9d5ff',
+                        borderRadius: '12px',
+                        borderTopRightRadius: '4px'
                       }}>
                         <div style={{ 
                           display: 'flex', 
@@ -226,7 +248,7 @@ export default function Chat() {
                           <div style={{ 
                             fontSize: '13px', 
                             fontWeight: '600', 
-                            color: '#374151',
+                            color: '#7c3aed',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px'
@@ -234,7 +256,7 @@ export default function Chat() {
                             <span>📋</span>
                             Task Progress
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          <div style={{ fontSize: '12px', color: '#7c3aed' }}>
                             {taskSteps.filter(s => s.status === 'completed').length}/{taskSteps.length}
                           </div>
                         </div>
@@ -256,7 +278,7 @@ export default function Chat() {
                                   width: '18px', 
                                   height: '18px', 
                                   borderRadius: '50%', 
-                                  background: '#10b981',
+                                  background: '#7c3aed',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -269,7 +291,7 @@ export default function Chat() {
                                   width: '18px', 
                                   height: '18px', 
                                   borderRadius: '50%', 
-                                  border: '2px solid #3b82f6',
+                                  border: '2px solid #7c3aed',
                                   borderTopColor: 'transparent',
                                   animation: 'spin 1s linear infinite',
                                   flexShrink: 0
@@ -296,7 +318,19 @@ export default function Chat() {
 
                     {/* User message or AI text response */}
                     {textContent && (
-                      <div style={{ fontSize: '15px', lineHeight: '1.6', color: '#1a1a1a', whiteSpace: 'pre-wrap' }}>
+                      <div style={{ 
+                        fontSize: '15px', 
+                        lineHeight: '1.6', 
+                        color: '#1a1a1a', 
+                        whiteSpace: 'pre-wrap',
+                        padding: '14px 16px',
+                        background: isUser ? '#eff6ff' : '#faf5ff',
+                        borderRadius: '12px',
+                        borderTopLeftRadius: isUser ? '4px' : '12px',
+                        borderTopRightRadius: isUser ? '12px' : '4px',
+                        border: isUser ? '1px solid #dbeafe' : '1px solid #e9d5ff',
+                        width: '100%'
+                      }}>
                         {textContent}
                       </div>
                     )}
