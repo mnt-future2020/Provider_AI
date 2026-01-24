@@ -111,7 +111,7 @@ export default function AdminPage() {
       <header style={{ borderBottom: '1px solid #e5e5e5', background: '#ffffff' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#1a1a1a', margin: 0, letterSpacing: '-0.01em' }}>
-            iSuiteAI - Admin Dashboard
+            iSuite - Admin Dashboard
           </h1>
           <button
             onClick={() => router.push('/')}

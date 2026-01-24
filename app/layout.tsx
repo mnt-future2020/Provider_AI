@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "iSuiteAI - Intelligent Assistant",
+  title: "iSuite - Intelligent Assistant",
   description: "Your AI-powered productivity companion",
 };
 

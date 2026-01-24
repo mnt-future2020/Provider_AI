@@ -48,7 +48,8 @@ export async function POST(
     });
 
     // Auto-generate descriptive title after AI responds
-    if (role === 'assistant' && (session.title === 'New Chat' || session.title.toLowerCase().includes('hello') || session.title.toLowerCase().includes('greeting') || session.title.toLowerCase().includes('hi'))) {
+    const title = session.title || '';
+    if (role === 'assistant' && (title === 'New Chat' || title.toLowerCase().includes('hello') || title.toLowerCase().includes('greeting') || title.toLowerCase().includes('hi'))) {
       try {
         // Get all messages in the conversation so far
         const allMessages = await prisma.message.findMany({
@@ -75,8 +76,7 @@ export async function POST(
 Conversation:
 ${conversationContext}
 
-Respond with ONLY the title, no quotes or extra text. Focus on the main action or topic, not greetings. Examples: "Email sending task", "GitHub repository help", "Calendar event creation", "Document editing"`,
-            maxTokens: 20
+Respond with ONLY the title, no quotes or extra text. Focus on the main action or topic, not greetings. Examples: "Email sending task", "GitHub repository help", "Calendar event creation", "Document editing"`
           });
 
           const title = generatedTitle.trim().slice(0, 40);
