@@ -30,10 +30,19 @@ interface ChatSession {
 
 export default function Chat() {
   const { data: session, status } = useSession();
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const { messages, sendMessage, status: chatStatus, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
+    onError: (err) => {
+      console.error('Chat error:', err);
+      // Check for rate limit error
+      if (err.message?.includes('429') || err.message?.includes('rate_limit') || err.message?.includes('Rate limit')) {
+        setRateLimitError('Rate limit reached. Please wait 30 seconds and try again.');
+        setTimeout(() => setRateLimitError(null), 30000); // Clear after 30 seconds
+      }
+    },
   });
   const [input, setInput] = useState('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -1433,6 +1442,39 @@ export default function Chat() {
             )}
           </div>
         </main>
+
+        {/* Rate limit error notification */}
+        {rateLimitError && (
+          <div style={{ 
+            position: 'fixed', 
+            bottom: messages.length > 0 ? '90px' : '20px', 
+            left: sidebarOpen ? '280px' : '60px', 
+            right: 0, 
+            zIndex: 40,
+            display: 'flex',
+            justifyContent: 'center',
+            transition: 'left 0.3s'
+          }}>
+            <div style={{ 
+              background: '#fef3c7', 
+              border: '1px solid #f59e0b', 
+              borderRadius: '8px', 
+              padding: '12px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <span style={{ fontSize: '14px', color: '#92400e' }}>{rateLimitError}</span>
+              <button 
+                onClick={() => setRateLimitError(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={16} color="#92400e" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Bottom fixed input - only show when there are messages */}
         {messages.length > 0 && (

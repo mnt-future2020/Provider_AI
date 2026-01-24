@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         console.log(`Tools fetched successfully. Tool count: ${Object.keys(tools).length}`);
 
         const result = streamText({
-            model: openai('gpt-4o'),
+            model: openai('gpt-4o-mini'),
             system: `You are iSuiteAI, a helpful personal assistant. Use Composio tools to take action.
 
 ## CRITICAL RULES
@@ -111,10 +111,34 @@ User: ${user.name} (${user.email})`,
         });
 
         return result.toUIMessageStreamResponse();
-    } catch (error) {
+    } catch (error: any) {
         console.error('Chat error:', error);
+        
+        // Handle rate limit errors
+        if (error?.message?.includes('rate_limit') || error?.code === 'rate_limit_exceeded') {
+            const retryAfter = error?.message?.match(/try again in (\d+\.?\d*)/)?.[1] || '30';
+            return NextResponse.json(
+                { 
+                    error: `Rate limit reached. Please wait ${Math.ceil(parseFloat(retryAfter))} seconds and try again.`,
+                    retryAfter: Math.ceil(parseFloat(retryAfter))
+                },
+                { status: 429 }
+            );
+        }
+        
+        // Handle other OpenAI errors
+        if (error?.type === 'error' && error?.error?.type === 'tokens') {
+            return NextResponse.json(
+                { 
+                    error: 'Rate limit reached. Please wait a moment and try again.',
+                    retryAfter: 30
+                },
+                { status: 429 }
+            );
+        }
+        
         return NextResponse.json(
-            { error: 'Failed to process chat request' },
+            { error: 'Failed to process chat request. Please try again.' },
             { status: 500 }
         );
     }
